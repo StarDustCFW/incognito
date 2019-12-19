@@ -142,7 +142,7 @@ public:
 		{
 			for (int i = 0; i < 99; i++)
 			{
-				sprintf(filename, "sdmc:/backup/proinfo-%d.bin", i);
+				sprintf(filename, "sdmc:/backup/prodinfo-%d.bin", i);
 
 				if (!fileExists(filename))
 				{
