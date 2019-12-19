@@ -37,8 +37,8 @@ DATA		:=	data
 INCLUDES	:=	include
 EXEFS_SRC	:=	exefs_src
 APP_TITLE   :=	Incognito
-APP_AUTHOR  := 	Blawar
-APP_VERSION := 	1.5-1
+APP_AUTHOR  := 	Kronos2308
+APP_VERSION := 	1.6-1
 #ROMFS	:=	romfs
 
 #---------------------------------------------------------------------------------

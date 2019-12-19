@@ -24,29 +24,13 @@ char *SwitchIdent_GetSerialNumber(void) {
 	return serial;
 }
 
-//	create flags
-bool createflag(const char* flagread){
-		fsInitialize();
-		FILE* c = fopen(flagread, "wb");
-		c;
-		fclose(c);
-		fsExit();
-		return 0;
-}
 
-//delete all flags
-bool delflags(){
-	remove("/atmosphere/flags/hbl_cal_read.flag");
-	remove("/atmosphere/flags/hbl_cal_write.flag");
-	appletEndBlockingHomeButton();
-	return 0;
-}
 //traduction
 bool isSpanish()
 {
 			setInitialize();
 			u64 lcode = 0;
-			s32 lang = 1;
+			SetLanguage lang;
 			setGetSystemLanguage(&lcode);
 			setMakeLanguage(lcode, &lang);
 				switch(lang)
@@ -76,18 +60,48 @@ bool fileExists(const char* path)
 	return false;
 }
 
+//force this config to evoid a crash
+void forceconfig()
+{
+	fsInitialize();
+	if(!fileExists("sdmc:/StarDust/StarDustV.txt"))
+	{
+		remove("sdmc:/atmosphere/config/system_settings.ini");
+		FILE* c = fopen("sdmc:/atmosphere/config/system_settings.ini", "w");
+		fprintf (c, "\n[eupld]\n");
+		fprintf (c, "upload_enabled = u8!0x0\n");
+		fprintf (c, "\n[usb]\n");
+		fprintf (c, "usb30_force_enabled = u8!0x0\n");
+		fprintf (c, "\n[ro]\n");
+		fprintf (c, "ease_nro_restriction = u8!0x0\n");
+		fprintf (c, "\n[atmosphere]\n");
+		fprintf (c, "fatal_auto_reboot_interval = u64!0x0\n");
+		fprintf (c, "power_menu_reboot_function = str!payload\n");
+		fprintf (c, "dmnt_cheats_enabled_by_default = u8!0x1\n");
+		fprintf (c, "dmnt_always_save_cheat_toggles = u8!0x0\n");
+		fprintf (c, "enable_hbl_bis_write = u8!0x1\n");
+		fprintf (c, "enable_hbl_cal_read = u8!0x1\n");
+		fprintf (c, "fsmitm_redirect_saves_to_sd = u8!0x0\n");
+		fprintf (c, "\n[hbloader]\n");
+		fprintf (c, "applet_heap_size = u64!0x0\n");
+		fprintf (c, "applet_heap_reservation_size = u64!0x8000000\n");
+		fclose(c);
+		fsExit();
+	}
+}
+
 class Incognito
 {
 public:
 
 	Incognito()
 	{		
-		if (fsOpenBisStorage(&m_sh, FsBisStorageId_CalibrationBinary))
+		if (fsOpenBisStorage(&m_sh, FsBisPartitionId_CalibrationBinary))
 		{
 			if(isSpanish())
-			printf("\x1b[31;1merror:\x1b[0m no se pudo abrir la partición cal0.\n");
+			printf("\x1b[31;1merror:\x1b[0m no se pudo abrir la partición Prodinfo.\n");
 			else
-			printf("\x1b[31;1merror:\x1b[0m failed to open cal0 partition.\n");
+			printf("\x1b[31;1merror:\x1b[0m failed to open Prodinfo partition.\n");
 			m_open = false;
 		}
 		else
@@ -153,13 +167,13 @@ public:
 
 		if (fsStorageRead(&m_sh, 0x0, buffer, size()))
 		{
-			printf("\x1b[31;1merror:\x1b[0m failed reading cal0\n");
+			printf("\x1b[31;1merror:\x1b[0m failed reading Prodinfo\n");
 
 			delete buffer;
 			return false;
 		}
 				FsFileSystem save;
-			    fsOpenBisFileSystem(&save, FsBisStorageId_SafeMode, "");
+			    fsOpenBisFileSystem(&save, FsBisPartitionId_SafeMode, "");
                 fsdevMountDevice("safemode2", save);
 				
 			FILE* f = fopen(fileName, "wb+");
@@ -192,9 +206,9 @@ public:
 		return true;
 	}
 
-	u64 size()
+	s64 size()
 	{
-		u64 s = 0;
+		s64 s = 0;
 		fsStorageGetSize(&m_sh, &s);
 		return s;
 	}
@@ -214,9 +228,9 @@ public:
 		{
 			printf("\x1b[31;1merror:\x1b[0m failed writing serial\n");
 			if(isSpanish())
-			printf("\x1b[36;1mAtmosphere bloquea el acceso al prodinfo\x1b[0m\n");
+			printf("\x1b[36;1mEl CFW esta bloqueando el acceso al prodinfo\x1b[0m\n");
 			else
-			printf("\x1b[36;1mAtmosphere block the access to the prodinfo\x1b[0m\n");
+			printf("\x1b[36;1mThe CFW is blocking the access to the prodinfo\x1b[0m\n");
 			return false;
 		}
 
@@ -313,9 +327,9 @@ public:
 			{
 				printf("\x1b[31;1merror:\x1b[0m failed writing hash\n");
 			if(isSpanish())
-			printf("\x1b[36;1mAtmosphere bloquea el acceso al prodinfo\x1b[0m\n");
+			printf("\x1b[36;1mEl CFW esta bloqueando el acceso al prodinfo\x1b[0m\n");
 			else
-			printf("\x1b[36;1mAtmosphere block the access to the prodinfo\x1b[0m\n");
+			printf("\x1b[36;1mThe CFW is blocking the access to the prodinfo\x1b[0m\n");
 			}
 		}
 
@@ -427,7 +441,7 @@ bool Reboots()
 	}else{
 	printf("Press + to Reboot(recomended)\n");	
 	printf("Press HOME to exit\n");}
-	delflags();
+	appletEndBlockingHomeButton();
 	while (appletMainLoop())
 	{
 		hidScanInput();
@@ -453,7 +467,7 @@ bool end()
 	else
 	printf("Press + to exit\n");
 	
-	delflags();
+	appletEndBlockingHomeButton();
 	while (appletMainLoop())
 	{
 		hidScanInput();
@@ -509,7 +523,6 @@ bool install()
 	{
 		return end();
 	}
-	createflag("sdmc:/atmosphere/flags/hbl_cal_write.flag");
 	printf("Working...\n");
 	consoleUpdate(NULL);
 	Incognito incognito;
@@ -543,7 +556,7 @@ bool verify()
 		consoleUpdate(NULL);
 		printf("\x1b[31;1merror: Prodinfo is invalid\n\n\x1b[0m");
 		
-		return false;
+		return true;
 	}
 }
 
@@ -554,7 +567,6 @@ if(verify()){
 	{
 		return end();
 	}
-	createflag("sdmc:/atmosphere/flags/hbl_cal_write.flag");
 	printf("Working...\n");
 	consoleUpdate(NULL);
 Incognito incognito;
@@ -566,11 +578,11 @@ Incognito incognito;
 			//return end();
 		}
 	}else{
-	printf("\x1b[31;1m*:\x1b[0m prodinfo.bin does not exist on the SD card, do i restore it from the Nand? \n");
+	printf("\x1b[31;1m*:\x1b[0m /backup/prodinfo.bin does not exist on the SD card, do i restore it from the Nand? \n");
 	consoleUpdate(NULL);
 		//Ok prodifo.bin is not on SD
 		FsFileSystem save2;
-		fsOpenBisFileSystem(&save2, FsBisStorageId_SafeMode, "");
+		fsOpenBisFileSystem(&save2, FsBisPartitionId_SafeMode, "");
         fsdevMountDevice("safemode2", save2);
 		
 		//first check if prodifo.bin is on nand
@@ -666,13 +678,12 @@ bool mainMenu()
 
 int main(int argc, char **argv)
 {
+forceconfig();
 	fsInitialize();
-	
 	consoleInit(NULL);
 	appletBeginBlockingHomeButton(3);
 	printf("\x1b[32;1m*\x1b[0m %s v%s Kronos2308 Mod \n",TITLE, VERSION);
 	mkdir("/atmosphere/flags", 0700);
-	createflag("sdmc:/atmosphere/flags/hbl_cal_read.flag");
 	printSerial();
 				if(isSpanish())
 				{
@@ -680,34 +691,34 @@ int main(int argc, char **argv)
 					printf("\x1b[31;1m*\x1b[0m Esta aplicacion corrompe intencionalmente el \x1b[31;1mPRODINFO\x1b[0m de la consola.\n");
 					printf("\x1b[31;1m*\x1b[0m El objetivo es que la consola no conecta con Nintendo de ninguna forma.\n");
 					printf("\x1b[31;1m*\x1b[0m Si se usa en Emunand solo afectara a Emunand.\n");
-					printf("\x1b[31;1m*\x1b[0m Puede ser revertido en cualquier momento asi que no pierdas tu prodinfo.bin\n");
+					printf("\x1b[31;1m*\x1b[0m Puede ser revertido en cualquier momento, Asi que no pierdas tu prodinfo.bin\n");
 					printf("\x1b[31;1m*\x1b[0m Este software viene sin ninguna garantia.\n");
 					printf("\x1b[31;1m*\x1b[0m No soy responsable de posibles fusiones Nucleares o Explosiones...\n");
 					printf("\n\n\x1b[30;1m-------- Menu Principal --------\x1b[0m\n");
 						if(strlen(SwitchIdent_GetSerialNumber()) != 0)
 						printf("Pulsa A para Instalar incognito Mode\n");
 						else
-						printf("-----------------------------------\n* \x1b[30;1mIncognito parece estar Instalado\x1b[0m\n-----------------------------------\n");
-					printf("Pulsa Y para Restaurar prodinfo.bin\n");
+						printf("-----------------------------------\n* \x1b[30;1mIncognito esta Instalado\x1b[0m\n-----------------------------------\n");
+					printf("Pulsa Y para Restaurar /backup/prodinfo.bin\n");
 					printf("Pulsa + para Salir\n\n");
 				}else{
 					printf("\x1b[31;1m*\x1b[0m Warning: This software was written by a not nice person.\n");
 					printf("\x1b[31;1m*\x1b[0m This application intentionally corrupts the console \x1b[31;1mProdinfo\x1b[0m partition.\n");
 					printf("\x1b[31;1m*\x1b[0m The goal is that the console does not connect with Nintendo in any way.\n");
 					printf("\x1b[31;1m*\x1b[0m If used in Emunand it will only affect Emunand.\n");
-					printf("\x1b[31;1m*\x1b[0m It can be reversed at any time so don't lose your prodinfo.bin.\n");
+					printf("\x1b[31;1m*\x1b[0m It can be reversed at any time, So don't lose your prodinfo.bin.\n");
 					printf("\x1b[31;1m*\x1b[0m this software come without any warranty.\n");
 					printf("\x1b[31;1m*\x1b[0m I am not responsable of melt switch or nuclear explotions\n");
 					printf("\n\n\x1b[30;1m-------- Main Menu --------\x1b[0m\n");
 						if(strlen(SwitchIdent_GetSerialNumber()) != 0)
 						printf("Press A to install incognito mode\n");
 						else
-						printf("\n-----------------------------------* \x1b[30;1mIncognito seems to be Installed\x1b[0m\n\n-----------------------------------");
-					printf("Press Y to restore prodinfo.bin\n");
+						printf("\n-----------------------------------* \x1b[30;1mIncognito is Installed\x1b[0m\n\n-----------------------------------");
+					printf("Press Y to restore /backup/prodinfo.bin\n");
 					printf("Press + to exit\n\n");
 				}
 	mainMenu();
-	delflags();
+	appletEndBlockingHomeButton();
 	consoleExit(NULL);
 	fsExit();
 	return 0;
